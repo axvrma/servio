@@ -1,0 +1,46 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7B61FF"/>
+      <stop offset="100%" style="stop-color:#6750A4"/>
+    </linearGradient>
+    <linearGradient id="terminalGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#E8DEF8"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bgGradient)"/>
+  
+  <!-- Terminal window -->
+  <rect x="96" y="128" width="320" height="256" rx="24" fill="#1C1B1F"/>
+  
+  <!-- Terminal header bar -->
+  <rect x="96" y="128" width="320" height="48" rx="24" fill="#2B2930"/>
+  <rect x="96" y="152" width="320" height="24" fill="#2B2930"/>
+  
+  <!-- Window buttons -->
+  <circle cx="132" cy="152" r="10" fill="#F2B8B5"/>
+  <circle cx="164" cy="152" r="10" fill="#FFDEA8"/>
+  <circle cx="196" cy="152" r="10" fill="#C4EED0"/>
+  
+  <!-- Terminal prompt lines -->
+  <rect x="128" y="200" width="24" height="4" rx="2" fill="#6750A4"/>
+  <rect x="160" y="200" width="180" height="4" rx="2" fill="#CAC4D0"/>
+  
+  <rect x="128" y="228" width="24" height="4" rx="2" fill="#6750A4"/>
+  <rect x="160" y="228" width="140" height="4" rx="2" fill="#C4EED0"/>
+  
+  <rect x="128" y="256" width="24" height="4" rx="2" fill="#6750A4"/>
+  <rect x="160" y="256" width="200" height="4" rx="2" fill="#CAC4D0"/>
+  
+  <!-- Blinking cursor -->
+  <rect x="128" y="292" width="24" height="4" rx="2" fill="#6750A4"/>
+  <rect x="160" y="288" width="12" height="16" rx="2" fill="#EADDFF"/>
+  
+  <!-- Play button indicator (bottom right) -->
+  <circle cx="368" cy="336" r="28" fill="#386A20"/>
+  <path d="M358 322 L382 336 L358 350 Z" fill="#FFFFFF"/>
+</svg>
