@@ -7,24 +7,58 @@ module.exports = {
     name: 'Servio',
     executableName: 'servio',
     icon: './assets/icon',
+    appBundleId: 'com.abhishekverma.servio',
+    appCategoryType: 'public.app-category.developer-tools',
+    darwinDarkModeSupport: true,
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        name: 'Servio',
+        setupIcon: './assets/icon.ico',
+      },
+    },
+    {
+      name: '@electron-forge/maker-dmg',
+      config: {
+        name: 'Servio',
+        icon: './assets/icon.icns',
+        format: 'ULFO',
+        overwrite: true,
+      },
     },
     {
       name: '@electron-forge/maker-zip',
-      platforms: ['darwin'],
+      platforms: ['darwin', 'linux'],
     },
     {
       name: '@electron-forge/maker-deb',
-      config: {},
+      config: {
+        options: {
+          name: 'servio',
+          productName: 'Servio',
+          genericName: 'Process Manager',
+          description: 'A desktop app for managing and monitoring server processes',
+          categories: ['Development', 'Utility'],
+          icon: './assets/icon.png',
+          maintainer: 'Abhishek Verma',
+        },
+      },
     },
     {
       name: '@electron-forge/maker-rpm',
-      config: {},
+      config: {
+        options: {
+          name: 'servio',
+          productName: 'Servio',
+          genericName: 'Process Manager',
+          description: 'A desktop app for managing and monitoring server processes',
+          categories: ['Development', 'Utility'],
+          icon: './assets/icon.png',
+        },
+      },
     },
   ],
   plugins: [
@@ -32,8 +66,6 @@ module.exports = {
       name: '@electron-forge/plugin-auto-unpack-natives',
       config: {},
     },
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,
