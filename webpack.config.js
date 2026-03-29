@@ -1,7 +1,7 @@
 const path = require("path");
 
 module.exports = {
-    mode: "development",
+    mode: "production",
     entry: "./renderer.js",
     output: {
         path: path.resolve(__dirname, "dist"),
@@ -20,5 +20,8 @@ module.exports = {
     },
     resolve: {
         extensions: [".js", ".jsx"],
+    },
+    performance: {
+        hints: false,
     },
 };

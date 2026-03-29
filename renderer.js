@@ -62,6 +62,17 @@ import {
 import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import posthog from "posthog-js";
+
+// Initialize PostHog
+posthog.init('phc_xNrMGr9sZ36QAhi7tcWoDoLYASkc7mRcWmMAa0NWES2', {
+    api_host: 'https://us.i.posthog.com',
+    autocapture: true,
+    capture_pageview: true,
+});
+
+// Send test event immediately
+posthog.capture('app_initialized', { app_name: 'Servio', version: '1.0.0' });
 
 const theme = createTheme({
     palette: {
