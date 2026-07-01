@@ -21,6 +21,7 @@ import {
     Close as CloseIcon,
     Favorite as FavoriteIcon,
     GitHub as GitHubIcon,
+    OpenInNew as OpenInNewIcon,
 } from "@mui/icons-material";
 import {
     AppBar,
@@ -235,6 +236,8 @@ const formatUptime = (ms) => {
     return `${seconds}s`;
 };
 
+const MAX_TERMINAL_LINES = 1000;
+
 const TerminalViewer = ({ alias, isOpen, onClear }) => {
     const [output, setOutput] = useState([]);
     const terminalRef = useRef(null);
@@ -249,10 +252,19 @@ const TerminalViewer = ({ alias, isOpen, onClear }) => {
     useEffect(() => {
         const handleOutput = (outputAlias, data) => {
             if (outputAlias === alias) {
-                setOutput(prev => [...prev, data]);
+                setOutput(prev => [...prev, data].slice(-MAX_TERMINAL_LINES));
             }
         };
-        window.electronAPI.onProcessOutput(handleOutput);
+        return window.electronAPI.onProcessOutput(handleOutput);
+    }, [alias]);
+
+    useEffect(() => {
+        const handleOutputCleared = (outputAlias) => {
+            if (outputAlias === alias) {
+                setOutput([]);
+            }
+        };
+        return window.electronAPI.onProcessOutputCleared(handleOutputCleared);
     }, [alias]);
 
     useEffect(() => {
@@ -272,20 +284,22 @@ const TerminalViewer = ({ alias, isOpen, onClear }) => {
     return (
         <Box 
             sx={{ 
-                bgcolor: '#1C1B1F', 
-                borderRadius: 3,
+                bgcolor: '#111318',
+                borderRadius: 2,
                 overflow: 'hidden',
                 mx: 2,
                 mb: 2,
+                border: '1px solid #2D3038',
             }}
         >
             <Box sx={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                px: 2,
-                py: 1,
-                bgcolor: '#2B2930',
+                px: 1.5,
+                py: 0.75,
+                bgcolor: '#1A1D24',
+                borderBottom: '1px solid #2D3038',
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TerminalIcon sx={{ fontSize: 18, color: '#CAC4D0' }} />
@@ -320,12 +334,13 @@ const TerminalViewer = ({ alias, isOpen, onClear }) => {
             <Box 
                 ref={terminalRef}
                 sx={{ 
-                    height: 220, 
+                    height: 320,
                     overflow: 'auto',
-                    p: 2,
+                    p: 1.5,
                     fontFamily: '"JetBrains Mono", "Fira Code", Monaco, monospace',
-                    fontSize: 12,
-                    lineHeight: 1.6,
+                    fontSize: 12.5,
+                    lineHeight: 1.55,
+                    tabSize: 2,
                     '&::-webkit-scrollbar': {
                         width: 8,
                     },
@@ -347,23 +362,30 @@ const TerminalViewer = ({ alias, isOpen, onClear }) => {
                         <Box 
                             key={idx} 
                             sx={{ 
+                                display: 'flex',
+                                gap: 1.5,
                                 color: line.isError ? '#F2B8B5' : '#E6E1E5',
                                 whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-all',
+                                overflowWrap: 'anywhere',
+                                wordBreak: 'normal',
+                                minHeight: 18,
                             }}
                         >
                             <Typography 
                                 component="span" 
                                 sx={{ 
                                     color: '#938F99', 
-                                    fontSize: 10, 
-                                    mr: 1.5,
-                                    fontFamily: 'inherit'
+                                    fontSize: 10.5,
+                                    fontFamily: 'inherit',
+                                    flex: '0 0 74px',
+                                    userSelect: 'none',
                                 }}
                             >
                                 {line.timestamp}
                             </Typography>
-                            {line.text}
+                            <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
+                                {line.text || ' '}
+                            </Box>
                         </Box>
                     ))
                 )}
@@ -410,6 +432,15 @@ const StatusChip = ({ status, uptime }) => {
                 '& .MuiChip-icon': { color: '#7D5700' }
             }
         },
+        stopping: {
+            icon: <StopIcon sx={{ fontSize: 16 }} />,
+            label: 'Stopping...',
+            sx: {
+                bgcolor: alpha('#7D5700', 0.12),
+                color: '#7D5700',
+                '& .MuiChip-icon': { color: '#7D5700' }
+            }
+        },
     };
 
     const config = configs[status] || configs.stopped;
@@ -440,13 +471,17 @@ const ProcessCard = ({
     onStop, 
     onEdit, 
     onDelete,
+    onOpenTerminalWindow,
     dragHandleProps 
 }) => {
     const statusColor = isRunning 
-        ? '#386A20' 
+        ? status === 'stopping' ? '#7D5700' : '#386A20'
         : status === 'error' 
             ? '#B3261E' 
             : 'transparent';
+    const displayStatus = status === 'stopping' || status === 'restarting'
+        ? status
+        : isRunning ? 'running' : status || 'stopped';
 
     return (
         <Card 
@@ -498,7 +533,7 @@ const ProcessCard = ({
                                 {process.alias}
                             </Typography>
                             <StatusChip 
-                                status={isRunning ? 'running' : status || 'stopped'}
+                                status={displayStatus}
                                 uptime={isRunning ? uptime : null}
                             />
                             {process.autoRestart && (
@@ -577,14 +612,30 @@ const ProcessCard = ({
                 </Button>
                 
                 <Stack direction="row" spacing={0.5}>
+                    <Tooltip title="Open output in separate window">
+                        <IconButton
+                            onClick={onOpenTerminalWindow}
+                            sx={{
+                                color: '#625B71',
+                                '&:hover': { bgcolor: alpha('#625B71', 0.08) }
+                            }}
+                        >
+                            <OpenInNewIcon />
+                        </IconButton>
+                    </Tooltip>
                     {isRunning ? (
                         <Tooltip title="Stop process">
                             <IconButton 
                                 onClick={onStop}
+                                disabled={status === 'stopping'}
                                 sx={{ 
                                     bgcolor: alpha('#B3261E', 0.08),
                                     color: '#B3261E',
-                                    '&:hover': { bgcolor: alpha('#B3261E', 0.16) }
+                                    '&:hover': { bgcolor: alpha('#B3261E', 0.16) },
+                                    '&:disabled': {
+                                        bgcolor: '#E7E0EC',
+                                        color: '#79747E',
+                                    }
                                 }}
                             >
                                 <StopIcon />
@@ -674,63 +725,97 @@ const App = () => {
     const isWideScreen = useMediaQuery('(min-width: 1200px)');
     const isExtraWide = useMediaQuery('(min-width: 1600px)');
 
-    useEffect(() => {
-        window.electronAPI.onLoadConfig((configs) => {
-            setProcesses(configs);
-        });
+    const applyProcessStates = (states = {}) => {
+        const running = {};
+        const status = {};
 
-        window.electronAPI.onLoadProcessStates((states) => {
-            const running = {};
-            const status = {};
-            Object.entries(states).forEach(([alias, state]) => {
-                const index = processes.findIndex(p => p.alias === alias);
-                if (index !== -1 && state.running) {
-                    running[index] = true;
-                    status[alias] = 'running';
-                }
-            });
-            setRunningProcesses(running);
-            setProcessStatus(status);
-        });
-
-        window.electronAPI.onFocusProcess((alias) => {
-            const index = processes.findIndex(p => p.alias === alias);
-            if (index !== -1) {
-                setExpandedTerminals(prev => ({ ...prev, [index]: true }));
+        Object.entries(states).forEach(([alias, state]) => {
+            if (state.running) {
+                running[alias] = true;
             }
+            status[alias] = state.stopping ? 'stopping' : state.status || (state.running ? 'running' : 'stopped');
         });
+
+        setRunningProcesses(running);
+        setProcessStatus(status);
+    };
+
+    useEffect(() => {
+        const unsubscribeConfig = window.electronAPI.onLoadConfig((configs) => {
+            setProcesses(configs);
+            window.electronAPI.getProcessStates().then(applyProcessStates);
+        });
+
+        const unsubscribeStates = window.electronAPI.onLoadProcessStates(applyProcessStates);
+
+        const unsubscribeFocus = window.electronAPI.onFocusProcess((alias) => {
+            setExpandedTerminals(prev => ({ ...prev, [alias]: true }));
+        });
+
+        const unsubscribeStarted = window.electronAPI.onProcessStarted((alias) => {
+            setRunningProcesses(prev => ({ ...prev, [alias]: true }));
+            setProcessStatus(prev => ({ ...prev, [alias]: 'running' }));
+        });
+
+        const unsubscribeStopping = window.electronAPI.onProcessStopping((alias) => {
+            setProcessStatus(prev => ({ ...prev, [alias]: 'stopping' }));
+        });
+
+        const unsubscribeRestarting = window.electronAPI.onProcessRestarting((alias) => {
+            setRunningProcesses(prev => {
+                const next = { ...prev };
+                delete next[alias];
+                return next;
+            });
+            setProcessStatus(prev => ({ ...prev, [alias]: 'restarting' }));
+        });
+
+        return () => {
+            unsubscribeConfig();
+            unsubscribeStates();
+            unsubscribeFocus();
+            unsubscribeStarted();
+            unsubscribeStopping();
+            unsubscribeRestarting();
+        };
     }, []);
 
     useEffect(() => {
         const handleProcessStopped = (alias, metadata) => {
-            const index = processes.findIndex((proc) => proc.alias === alias);
-            if (index !== -1) {
-                const updatedRunningProcesses = { ...runningProcesses };
-                delete updatedRunningProcesses[index];
-                setRunningProcesses(updatedRunningProcesses);
-                
-                setProcessStatus(prev => ({
-                    ...prev,
-                    [alias]: metadata?.wasError ? 'error' : 'stopped'
-                }));
+            setRunningProcesses(prev => {
+                const next = { ...prev };
+                delete next[alias];
+                return next;
+            });
+            setUptimes(prev => {
+                const next = { ...prev };
+                delete next[alias];
+                return next;
+            });
 
-                if (metadata?.wasError) {
-                    setSnackbar({
-                        open: true,
-                        message: `${alias} crashed with exit code ${metadata.exitCode}`,
-                        severity: 'error'
-                    });
-                }
+            setProcessStatus(prev => ({
+                ...prev,
+                [alias]: metadata?.willRestart ? 'restarting' : metadata?.wasError ? 'error' : 'stopped'
+            }));
+
+            if (metadata?.wasError && !metadata?.wasManualStop) {
+                setSnackbar({
+                    open: true,
+                    message: metadata?.willRestart
+                        ? `${alias} crashed. Restarting...`
+                        : `${alias} stopped unexpectedly`,
+                    severity: 'error'
+                });
             }
         };
 
-        window.electronAPI.onProcessStopped(handleProcessStopped);
-    }, [processes, runningProcesses]);
+        return window.electronAPI.onProcessStopped(handleProcessStopped);
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            Object.entries(runningProcesses).forEach(([index]) => {
-                const process = processes[index];
+            Object.keys(runningProcesses).forEach((alias) => {
+                const process = processes.find((item) => item.alias === alias);
                 if (process) {
                     window.electronAPI.getProcessMetadata(process.alias).then(meta => {
                         if (meta?.startTime) {
@@ -754,31 +839,8 @@ const App = () => {
         const items = Array.from(processes);
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
-        
-        // Update running processes indices
-        const newRunning = {};
-        Object.keys(runningProcesses).forEach(oldIndex => {
-            const alias = processes[oldIndex]?.alias;
-            const newIndex = items.findIndex(p => p.alias === alias);
-            if (newIndex !== -1) {
-                newRunning[newIndex] = true;
-            }
-        });
-        
-        // Update expanded terminals indices
-        const newExpanded = {};
-        Object.keys(expandedTerminals).forEach(oldIndex => {
-            const alias = processes[oldIndex]?.alias;
-            const newIndex = items.findIndex(p => p.alias === alias);
-            if (newIndex !== -1 && expandedTerminals[oldIndex]) {
-                newExpanded[newIndex] = true;
-            }
-        });
-        
-        // Update state
+
         setProcesses(items);
-        setRunningProcesses(newRunning);
-        setExpandedTerminals(newExpanded);
         
         // Save new order to config file
         await window.electronAPI.reorderConfigs(items);
@@ -826,7 +888,7 @@ const App = () => {
         
         const result = await window.electronAPI.startProcess(process.alias, process.folder, process.command);
         if (result.success) {
-            setRunningProcesses({ ...runningProcesses, [index]: true });
+            setRunningProcesses(prev => ({ ...prev, [process.alias]: true }));
             setSnackbar({
                 open: true,
                 message: `${process.alias} started`,
@@ -844,18 +906,20 @@ const App = () => {
 
     const handleStop = async (index) => {
         const process = processes[index];
+        setProcessStatus(prev => ({ ...prev, [process.alias]: 'stopping' }));
+
         const result = await window.electronAPI.stopProcess(process.alias);
         if (result.success) {
-            const updatedRunningProcesses = { ...runningProcesses };
-            delete updatedRunningProcesses[index];
-            setRunningProcesses(updatedRunningProcesses);
-            setProcessStatus(prev => ({ ...prev, [process.alias]: 'stopped' }));
             setSnackbar({
                 open: true,
-                message: `${process.alias} stopped`,
+                message: `${process.alias} stopping`,
                 severity: 'info'
             });
         } else {
+            setProcessStatus(prev => ({
+                ...prev,
+                [process.alias]: runningProcesses[process.alias] ? 'running' : 'stopped'
+            }));
             setSnackbar({
                 open: true,
                 message: result.message,
@@ -871,9 +935,16 @@ const App = () => {
             const updatedProcesses = [...processes];
             updatedProcesses.splice(index, 1);
             setProcesses(updatedProcesses);
-            const updatedRunningProcesses = { ...runningProcesses };
-            delete updatedRunningProcesses[index];
-            setRunningProcesses(updatedRunningProcesses);
+            setRunningProcesses(prev => {
+                const next = { ...prev };
+                delete next[process.alias];
+                return next;
+            });
+            setProcessStatus(prev => {
+                const next = { ...prev };
+                delete next[process.alias];
+                return next;
+            });
             setSnackbar({
                 open: true,
                 message: `${process.alias} deleted`,
@@ -889,10 +960,26 @@ const App = () => {
     };
 
     const toggleTerminal = (index) => {
+        const process = processes[index];
+        if (!process) return;
         setExpandedTerminals(prev => ({
             ...prev,
-            [index]: !prev[index]
+            [process.alias]: !prev[process.alias]
         }));
+    };
+
+    const handleOpenTerminalWindow = async (index) => {
+        const process = processes[index];
+        if (!process) return;
+
+        const result = await window.electronAPI.openTerminalWindow(process.alias);
+        if (!result.success) {
+            setSnackbar({
+                open: true,
+                message: result.message,
+                severity: 'error'
+            });
+        }
     };
 
     const handleStartAll = async () => {
@@ -900,11 +987,11 @@ const App = () => {
         const newStatus = { ...processStatus };
         
         for (let i = 0; i < processes.length; i++) {
-            if (!newRunning[i]) {
+            if (!newRunning[processes[i].alias]) {
                 const process = processes[i];
                 const result = await window.electronAPI.startProcess(process.alias, process.folder, process.command);
                 if (result.success) {
-                    newRunning[i] = true;
+                    newRunning[process.alias] = true;
                     newStatus[process.alias] = 'running';
                 }
             }
@@ -920,22 +1007,21 @@ const App = () => {
     };
 
     const handleStopAll = async () => {
-        const indicesToStop = Object.keys(runningProcesses).map(Number);
+        const aliasesToStop = Object.keys(runningProcesses);
+
+        setProcessStatus(prev => {
+            const next = { ...prev };
+            aliasesToStop.forEach((alias) => {
+                next[alias] = 'stopping';
+            });
+            return next;
+        });
         
-        for (const index of indicesToStop) {
-            const process = processes[index];
-            if (process) {
-                await window.electronAPI.stopProcess(process.alias);
-            }
-        }
-        
-        setRunningProcesses({});
-        const newStatus = {};
-        processes.forEach(p => { newStatus[p.alias] = 'stopped'; });
-        setProcessStatus(newStatus);
+        await Promise.all(aliasesToStop.map((alias) => window.electronAPI.stopProcess(alias)));
+
         setSnackbar({
             open: true,
-            message: 'All processes stopped',
+            message: 'Stopping all processes',
             severity: 'info'
         });
     };
@@ -1126,13 +1212,14 @@ const App = () => {
                                                         <ProcessCard
                                                             process={process}
                                                             index={index}
-                                                            isRunning={!!runningProcesses[index]}
+                                                            isRunning={!!runningProcesses[process.alias]}
                                                             status={processStatus[process.alias]}
                                                             uptime={uptimes[process.alias]}
-                                                            isExpanded={!!expandedTerminals[index]}
+                                                            isExpanded={!!expandedTerminals[process.alias]}
                                                             onToggleTerminal={() => toggleTerminal(index)}
                                                             onStart={() => handleStart(index)}
                                                             onStop={() => handleStop(index)}
+                                                            onOpenTerminalWindow={() => handleOpenTerminalWindow(index)}
                                                             onEdit={() => {
                                                                 setEditIndex(index);
                                                                 setNewProcess(process);

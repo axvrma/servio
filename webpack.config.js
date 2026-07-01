@@ -2,7 +2,7 @@ const path = require("path");
 
 module.exports = {
     mode: "production",
-    entry: "./renderer.js",
+    entry: "./src/renderer/renderer.js",
     output: {
         path: path.resolve(__dirname, "dist"),
         filename: "renderer.bundle.js",
