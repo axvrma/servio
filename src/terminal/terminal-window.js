@@ -21,6 +21,12 @@
         metaElement.textContent = `${output.length} ${output.length === 1 ? "line" : "lines"}`;
     };
 
+    const scrollToBottom = () => {
+        requestAnimationFrame(() => {
+            terminalElement.scrollTop = terminalElement.scrollHeight;
+        });
+    };
+
     const createLineElement = (line) => {
         const row = document.createElement("div");
         row.className = `line${line.isError ? " error" : ""}`;
@@ -54,7 +60,7 @@
         updateMeta();
 
         if (autoScroll) {
-            terminalElement.scrollTop = terminalElement.scrollHeight;
+            scrollToBottom();
         }
     };
 
@@ -83,7 +89,7 @@
     autoScrollElement.addEventListener("change", (event) => {
         autoScroll = event.target.checked;
         if (autoScroll) {
-            terminalElement.scrollTop = terminalElement.scrollHeight;
+            scrollToBottom();
         }
     });
 
